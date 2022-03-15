@@ -7,7 +7,7 @@ class CobolConverter
 	def main
 		puts "initialisation et ouverture fichier"
 		stopwords = %w{ASCENDING}
-		File.open('EMASSTRT.cbl')
+		File.open('cobol.cpy')
 		trt_general(stopwords)
 	end
 
@@ -20,7 +20,7 @@ class CobolConverter
 		word_count = 0
 		line_count = 0
 		puts "trt_general"
-		File.foreach('EMASSTRT.cbl') do |line| 
+		File.foreach('cobol.cpy') do |line| 
 			# puts "ligne : #{line}"
 			# Detection "." en fin de ligne
 			next if line.match(Regexp.union('*'))
@@ -74,7 +74,6 @@ class CobolConverter
 		stock = ""
 		i = 0
 
-
 		# boucle sur les enregistrements du fichier
 		data.each_line do |line|
 			# contrôle presence donnée sur la ligne traitée
@@ -98,9 +97,20 @@ class CobolConverter
 				case index
 				when 0
 					if  val == true
-						longueur_ws = line.split("PIC").last.split(".").first
-						#puts "LONGUEUR : #{longueur_ws}"
+						longueur_ws = line.split("PIC").last.split(" ").first
+						puts "LONGUEUR : #{longueur_ws}"
+						# X --------------> alphanumérique 
+						# A --------------> alphabétique 
+						# 9 --------------> numérique non signé 
+					    # S9 -------------> numérique signé 
 						type_ws = determination_type(longueur_ws)
+						# Permet de determiner si la picture contient des parentheses
+						findbrackets = matching_brackets?(longueur_ws)
+						if findbrackets == false
+							lgr = longueur_ws[/\(.*?\)/]
+							#puts "longueur numerique : #{lgr}"
+						end
+						#puts "contains brackets : #{findbrackets}"
 						#puts "TYPE : #{type_ws}"
 						stock = ""
 					end
@@ -191,7 +201,8 @@ class CobolConverter
 							        "title": variable_ws,
 							        "niveau": niveau_ws,
 							        "type": type_ws,
-							        "longueur": longueur_ws,
+							        "picture": longueur_ws,
+									"longueur": "non définie",
 							        "compact": comp_ws,
 							        "value": value_ws,
 							        "thru": thru_ws,
@@ -218,7 +229,7 @@ class CobolConverter
 		end
 		#puts "data : #{sortie}"
 		jsonfile = JSON.generate(sortie)
-		File.write('C:/Users/Olivier/Documents/ConvertCbl/sortie.json', jsonfile, mode: 'a')
+		File.write('sortie.json', jsonfile, mode: 'a')
 
 	end
 
@@ -241,6 +252,21 @@ class CobolConverter
 			type = "sign"
 		end
 		return type
+	end
+
+	def matching_brackets?(a_string)
+		brackets =  {'[' => ']', '{' => '}', '(' => ')'}
+		lefts = brackets.keys
+		rights = brackets.values
+		stack = []
+		a_string.each_char do |c|
+		  if lefts.include? c
+			stack.push c
+		  elsif rights.include? c
+			stack.push c
+		  end
+		end
+		stack.empty?
 	end
 
 	def alim_champs_niveau(data, niv)
